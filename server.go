@@ -1,17 +1,23 @@
 package main
 
 import (
-	"net/http"
+	"os"
 
-	"github.com/labstack/echo/v4"
+	"library/routes"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	e := echo.New()
+	err := godotenv.Load()
 
-	e.GET("/", func(ctx echo.Context) error {
-		return ctx.String(http.StatusOK, "hello world")
-	})
+	if err != nil {
+		return
+	}
 
-	e.Logger.Fatal(e.Start(":3333"))
+	AppPort := os.Getenv("APP_PORT")
+
+	e := routes.Init()
+
+	e.Logger.Fatal(e.Start(":" + AppPort))
 }
