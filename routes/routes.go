@@ -18,6 +18,7 @@ func Init() *echo.Echo {
 	// Roles
 	e.GET("/roles", RoleController.GetAll)
 	e.POST("/roles", RoleController.Create)
+	e.GET("/roles/:id", RoleController.Show)
 	e.PUT("/roles/:id", RoleController.Update)
 	e.DELETE("/roles/:id", RoleController.Delete)
 

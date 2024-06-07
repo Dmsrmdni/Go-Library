@@ -94,6 +94,39 @@ func Create(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, response)
 }
 
+func Show(ctx echo.Context) error {
+	db := database.Init()
+
+	defer db.Close()
+
+	id := ctx.Param("id")
+
+	var role RoleModels.GetRole
+
+	if err := ctx.Bind(&role); err != nil {
+		return err
+	}
+
+	query := "SELECT id,name FROM roles WHERE id = $1"
+
+	err := db.QueryRow(query, id).Scan(&role.Id, &role.Name)
+
+	if err != nil {
+		response := models.ResponseDetail{
+			Message: "Role not found",
+		}
+
+		return ctx.JSON(http.StatusNotFound, response)
+	}
+
+	response := models.ResponseDetail{
+		Data:    role,
+		Message: "Get role detail successfully",
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}
+
 func Update(ctx echo.Context) error {
 	db := database.Init()
 
@@ -107,12 +140,27 @@ func Update(ctx echo.Context) error {
 		return err
 	}
 
+	validate := validator.New()
+
+	if err := validate.Struct(&role); err != nil {
+		response := models.ResponseDetail{
+			Data:    err.Error(),
+			Message: "Validation Error",
+		}
+
+		return ctx.JSON(http.StatusBadRequest, response)
+	}
+
 	query := "UPDATE roles SET name = $1 WHERE id = $2 returning id,name"
 
 	err := db.QueryRow(query, &role.Name, id).Scan(&role.Id, &role.Name)
 
 	if err != nil {
-		return err
+		response := models.ResponseDetail{
+			Message: "Role not found",
+		}
+
+		return ctx.JSON(http.StatusNotFound, response)
 	}
 
 	response := models.ResponseDetail{
@@ -138,14 +186,14 @@ func Delete(ctx echo.Context) error {
 		return err
 	}
 
-	rows, err := result.RowsAffected()
-
+	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		return err
 	}
-	if rows == 0 {
+
+	if rowsAffected == 0 {
 		response := models.ResponseDetail{
-			Message: "Roles not found",
+			Message: "Role not found",
 		}
 
 		return ctx.JSON(http.StatusNotFound, response)
