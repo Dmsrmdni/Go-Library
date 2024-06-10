@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 
+	"library/controllers/AuthorController"
 	"library/controllers/CategoryController"
 	"library/controllers/RoleController"
 	"library/controllers/UserController"
@@ -32,6 +33,13 @@ func Init() *echo.Echo {
 	e.POST("/users", UserController.Create)
 	e.GET("/users/:id", UserController.Show)
 	e.PUT("/users/:id", UserController.Update)
+
+	//Author
+	e.GET("/author", AuthorController.GetAll)
+	e.POST("/author", AuthorController.Create)
+	e.PUT("/author/:id", AuthorController.Update)
+	e.GET("/author/:id", AuthorController.Show)
+	e.DELETE("/author/:id", AuthorController.Delete)
 
 	//Category
 	e.GET("/category", CategoryController.GetAll)
