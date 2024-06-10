@@ -1,8 +1,8 @@
-package RoleController
+package CategoryController
 
 import (
 	"library/database"
-	"library/models/RoleModels"
+	"library/models/CategoryModels"
 	"net/http"
 
 	"library/models"
@@ -17,29 +17,55 @@ func GetAll(ctx echo.Context) error {
 
 	defer db.Close()
 
-	query := "SELECT id, name FROM roles ORDER BY id"
+	search := "%" + ctx.QueryParam("search") + "%"
 
-	rows, err := db.Query(query)
+	limit := ctx.QueryParam("limit")
+
+	if limit == "" {
+		limit = "10"
+	}
+
+	page := ctx.QueryParam("page")
+
+	if page == "" {
+		page = "0"
+	}
+
+	query := `
+			SELECT 
+				id, 
+				name,
+				created_at,
+				updated_at 
+			FROM 
+				categories
+			WHERE
+				name ILIKE $1 AND deleted_at is NULL
+			ORDER BY id
+			LIMIT $2 OFFSET $3
+			`
+
+	rows, err := db.Query(query, search, limit, page)
 
 	if err != nil {
 		return err
 	}
 
-	var data_roles []RoleModels.GetRole
+	var data_categories []CategoryModels.GetCategory
 	for rows.Next() {
-		var role RoleModels.GetRole
+		var category CategoryModels.GetCategory
 
-		err := rows.Scan(&role.Id, &role.Name)
+		err := rows.Scan(&category.Id, &category.Name, &category.CreatedAt, &category.UpdatedAt)
 
 		if err != nil {
 			return err
 		}
 
-		data_roles = append(data_roles, role)
+		data_categories = append(data_categories, category)
 	}
 
 	var total_data int
-	query_paginate := "SELECT COUNT(id) FROM roles"
+	query_paginate := "SELECT COUNT(id) FROM categories WHERE deleted_at IS NULL"
 
 	err = db.QueryRow(query_paginate).Scan(&total_data)
 
@@ -48,8 +74,8 @@ func GetAll(ctx echo.Context) error {
 	}
 
 	response := models.Response{
-		Data:     data_roles,
-		Message:  "Get role list successfully",
+		Data:     data_categories,
+		Message:  "Get categories list successfully",
 		Paginate: map[string]int{"total_data": total_data},
 	}
 
@@ -61,15 +87,15 @@ func Create(ctx echo.Context) error {
 
 	defer db.Close()
 
-	var role RoleModels.CreateRole
+	var category CategoryModels.CreateCategory
 
-	if err := ctx.Bind(&role); err != nil {
+	if err := ctx.Bind(&category); err != nil {
 		return err
 	}
 
 	validate := validator.New()
 
-	if err := validate.Struct(&role); err != nil {
+	if err := validate.Struct(&category); err != nil {
 		response := models.ResponseDetail{
 			Data:    err.Error(),
 			Message: "Validation Error",
@@ -78,17 +104,17 @@ func Create(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, response)
 	}
 
-	query := "INSERT INTO roles (name) VALUES ($1) returning id, name"
+	query := "INSERT INTO categories (name) VALUES ($1) returning id, name"
 
-	err := db.QueryRow(query, &role.Name).Scan(&role.Id, &role.Name)
+	err := db.QueryRow(query, &category.Name).Scan(&category.Id, &category.Name)
 
 	if err != nil {
 		return err
 	}
 
 	response := models.ResponseDetail{
-		Data:    role,
-		Message: "Create roles successfully",
+		Data:    category,
+		Message: "Create category successfully",
 	}
 
 	return ctx.JSON(http.StatusCreated, response)
@@ -101,23 +127,23 @@ func Show(ctx echo.Context) error {
 
 	id := ctx.Param("id")
 
-	var role RoleModels.GetRole
+	var category CategoryModels.GetCategory
 
-	query := "SELECT id,name FROM roles WHERE id = $1"
+	query := "SELECT id,name,created_at,updated_at FROM categories WHERE id = $1"
 
-	err := db.QueryRow(query, id).Scan(&role.Id, &role.Name)
+	err := db.QueryRow(query, id).Scan(&category.Id, &category.Name, &category.CreatedAt, &category.UpdatedAt)
 
 	if err != nil {
 		response := models.ResponseDetail{
-			Message: "Role not found",
+			Message: "Categories not found",
 		}
 
 		return ctx.JSON(http.StatusNotFound, response)
 	}
 
 	response := models.ResponseDetail{
-		Data:    role,
-		Message: "Get role detail successfully",
+		Data:    category,
+		Message: "Get categories detail successfully",
 	}
 
 	return ctx.JSON(http.StatusOK, response)
@@ -130,15 +156,15 @@ func Update(ctx echo.Context) error {
 
 	id := ctx.Param("id")
 
-	var role RoleModels.UpdateRole
+	var category CategoryModels.UpdateCategory
 
-	if err := ctx.Bind(&role); err != nil {
+	if err := ctx.Bind(&category); err != nil {
 		return err
 	}
 
 	validate := validator.New()
 
-	if err := validate.Struct(&role); err != nil {
+	if err := validate.Struct(&category); err != nil {
 		response := models.ResponseDetail{
 			Data:    err.Error(),
 			Message: "Validation Error",
@@ -147,21 +173,21 @@ func Update(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, response)
 	}
 
-	query := "UPDATE roles SET name = $1 WHERE id = $2 returning id,name"
+	query := "UPDATE categories SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 returning id,name,updated_at"
 
-	err := db.QueryRow(query, &role.Name, id).Scan(&role.Id, &role.Name)
+	err := db.QueryRow(query, &category.Name, id).Scan(&category.Id, &category.Name, &category.UpdatedAt)
 
 	if err != nil {
 		response := models.ResponseDetail{
-			Message: "Role not found",
+			Message: "Category not found",
 		}
 
 		return ctx.JSON(http.StatusNotFound, response)
 	}
 
 	response := models.ResponseDetail{
-		Data:    role,
-		Message: "Role updated successfully",
+		Data:    category,
+		Message: "Category updated successfully",
 	}
 
 	return ctx.JSON(http.StatusOK, response)
@@ -174,7 +200,7 @@ func Delete(ctx echo.Context) error {
 
 	id := ctx.Param("id")
 
-	query := "DELETE FROM roles WHERE id = $1"
+	query := "UPDATE categories SET deleted_at = CURRENT_TIMESTAMP  WHERE id = $1"
 
 	result, err := db.Exec(query, id)
 
@@ -189,14 +215,14 @@ func Delete(ctx echo.Context) error {
 
 	if rowsAffected == 0 {
 		response := models.ResponseDetail{
-			Message: "Role not found",
+			Message: "Categories not found",
 		}
 
 		return ctx.JSON(http.StatusNotFound, response)
 	}
 
 	response := models.ResponseDetail{
-		Message: "Roles deleted Successfully",
+		Message: "Categories deleted Successfully",
 	}
 
 	return ctx.JSON(http.StatusOK, response)
