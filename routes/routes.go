@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"library/controllers/AuthorController"
+	"library/controllers/BookController"
 	"library/controllers/CategoryController"
 	"library/controllers/RoleController"
 	"library/controllers/UserController"
@@ -20,6 +21,7 @@ func Init() *echo.Echo {
 
 	// Media
 	e.Static("avatar", "assets/images/avatar")
+	e.Static("thumbnail", "assets/images/thumbnail")
 
 	// Roles
 	e.GET("/roles", RoleController.GetAll)
@@ -47,6 +49,13 @@ func Init() *echo.Echo {
 	e.PUT("/category/:id", CategoryController.Update)
 	e.GET("/category/:id", CategoryController.Show)
 	e.DELETE("/category/:id", CategoryController.Delete)
+
+	//Books
+	e.GET("/book", BookController.GetAll)
+	e.POST("/book", BookController.Create)
+	e.PUT("/book/:id", BookController.Update)
+	e.GET("/book/:id", BookController.Show)
+	e.DELETE("/book/:id", BookController.Delete)
 
 	return e
 }
