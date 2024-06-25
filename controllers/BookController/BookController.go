@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"library/models"
@@ -30,10 +31,11 @@ func GetAll(ctx echo.Context) error {
 		limit = "10"
 	}
 
-	page := ctx.QueryParam("page")
+	pageStr := ctx.QueryParam("page")
+	page, _ := strconv.Atoi(pageStr)
 
-	if page == "" {
-		page = "0"
+	if page != 0 {
+		page = page - 1
 	}
 
 	query := `
@@ -252,6 +254,40 @@ func Show(ctx echo.Context) error {
 		}
 
 		return ctx.JSON(http.StatusNotFound, response)
+	}
+
+	query_total_inventory := `
+					SELECT 
+						COUNT(id)
+					FROM 
+						inventories 
+					WHERE
+						status != 'scrap'
+					AND 
+						book_id = $1
+					`
+
+	err = db.QueryRow(query_total_inventory, id).Scan(&book.TotalInventory)
+
+	if err != nil {
+		return err
+	}
+
+	query_total_available := `
+						SELECT 
+							COUNT(id)
+						FROM 
+							inventories 
+						WHERE
+							status = 'available'
+						AND 
+							book_id = $1
+						`
+
+	err = db.QueryRow(query_total_available, id).Scan(&book.TotalAvailable)
+
+	if err != nil {
+		return err
 	}
 
 	query = `
@@ -478,6 +514,67 @@ func Delete(ctx echo.Context) error {
 
 	response := models.ResponseDetail{
 		Message: "books deleted Successfully",
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}
+
+func ShowInvetory(ctx echo.Context) error {
+	db := database.Init()
+
+	defer db.Close()
+
+	id := ctx.Param("id")
+
+	query := `
+			SELECT 
+				inventories.id, 
+				books.title,
+				inventories.entry_time,
+				inventories.scrap_time,
+				inventories.status, 
+				inventories.created_at,
+				inventories.updated_at 
+			FROM 
+				inventories
+			JOIN 
+				books ON books.id = inventories.book_id
+			WHERE
+				books.id = $1
+			`
+
+	rows, err := db.Query(query, id)
+
+	if err != nil {
+		return err
+	}
+
+	var data_inventory []BookModels.GetInventory
+	for rows.Next() {
+		var inventory BookModels.GetInventory
+
+		err := rows.Scan(&inventory.Id, &inventory.Book, &inventory.EntryTime, &inventory.ScrapTime, &inventory.Status, &inventory.CreatedAt, &inventory.UpdatedAt)
+
+		if err != nil {
+			return err
+		}
+
+		data_inventory = append(data_inventory, inventory)
+	}
+
+	var total_data int
+	query_paginate := "SELECT COUNT(id) FROM inventories WHERE book_id = $1"
+
+	err = db.QueryRow(query_paginate, id).Scan(&total_data)
+
+	if err != nil {
+		return err
+	}
+
+	response := models.Response{
+		Data:     data_inventory,
+		Message:  "Get inventory list successfully",
+		Paginate: map[string]int{"total_data": total_data},
 	}
 
 	return ctx.JSON(http.StatusOK, response)

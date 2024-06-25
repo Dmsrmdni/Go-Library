@@ -26,6 +26,8 @@ type GetBookDetail struct {
 	PublicationYear int        `json:"publication_year"`
 	Description     string     `json:"description"`
 	Code            string     `json:"code"`
+	TotalInventory  int        `json:"total_inventory"`
+	TotalAvailable  int        `json:"total_available"`
 	Thumbnail       string     `json:"thumbnail"`
 	Author          []Author   `json:"author"`
 	CreatedAt       *time.Time `json:"created_at"`
@@ -56,4 +58,14 @@ type UpdateBook struct {
 	AuthorId        []int      `json:"author_id" form:"author_id"`
 	CreatedAt       *time.Time `json:"created_at" form:"created_at"`
 	UpdatedAt       *time.Time `json:"updated_at" form:"updated_at"`
+}
+
+type GetInventory struct {
+	Id        string     `json:"id"`
+	Book      string     `json:"book"`
+	EntryTime *time.Time `json:"entry_time"`
+	ScrapTime *time.Time `json:"scrap_time"`
+	Status    string     `json:"status"`
+	CreatedAt *time.Time `json:"created_at"`
+	UpdatedAt *time.Time `json:"updated_at"`
 }

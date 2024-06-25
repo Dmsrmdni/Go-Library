@@ -4,6 +4,7 @@ import (
 	"library/database"
 	"library/models/CategoryModels"
 	"net/http"
+	"strconv"
 
 	"library/models"
 
@@ -25,10 +26,11 @@ func GetAll(ctx echo.Context) error {
 		limit = "10"
 	}
 
-	page := ctx.QueryParam("page")
+	pageStr := ctx.QueryParam("page")
+	page, _ := strconv.Atoi(pageStr)
 
-	if page == "" {
-		page = "0"
+	if page != 0 {
+		page = page - 1
 	}
 
 	query := `
@@ -65,9 +67,9 @@ func GetAll(ctx echo.Context) error {
 	}
 
 	var total_data int
-	query_paginate := "SELECT COUNT(id) FROM categories WHERE deleted_at IS NULL"
+	query_paginate := "SELECT COUNT(id) FROM categories WHERE name ILIKE $1 AND deleted_at IS NULL"
 
-	err = db.QueryRow(query_paginate).Scan(&total_data)
+	err = db.QueryRow(query_paginate, search).Scan(&total_data)
 
 	if err != nil {
 		return err
